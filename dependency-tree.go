@@ -65,7 +65,7 @@ func constructFilePath(dep string) (string, bool) {
 }
 
 func getModuleList(modPath, indent string) {
-	rawPath, modFound := constructFilePath(modPath)
+	rawPath, modFound := constructFilePath(escapeCapitalsInModuleName(modPath))
 	if !modFound {
 		fmt.Println(indent + strings.Split(modPath, " //")[0])
 		return
@@ -137,4 +137,17 @@ func getModuleName(cwd string) string {
 	fmt.Println("Invalid go.mod, not module name")
 	os.Exit(1)
 	return ""
+}
+
+func escapeCapitalsInModuleName(name string) string {
+	letters := strings.Split(name, "")
+	newName := ""
+	for _, letter := range letters {
+		if strings.ToLower(letter) != letter {
+			newName += "!" + strings.ToLower(letter)
+		} else {
+			newName += letter
+		}
+	}
+	return newName
 }
