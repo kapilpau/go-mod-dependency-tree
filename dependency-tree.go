@@ -27,12 +27,16 @@ func main()  {
 	}
 
 	fmt.Println(cwd + ":")
-	getModuleList(modFile, "  ")
+	getModuleList(cwd, "  ")
 
 }
 
 func getNameAndVersion(module string) (string, string) {
+
 	s := strings.Split(module, " ")
+	if len(s) == 1 {
+		return s[0], ""
+	}
 	return s[0], getSemVer(s[1])
 }
 
@@ -41,19 +45,20 @@ func constructFilePath(dep string) string {
 	pkgPath := path.Join(gopath, "pkg", "mod", module + "@" + getSemVer(version))
 	srcPath := path.Join(gopath, "src", module)
 
-	if _, err := os.Stat(srcPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(srcPath); err == nil || !os.IsNotExist(err) {
 		return srcPath
 	}
 
-	if _, err := os.Stat(pkgPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(pkgPath); err == nil || !os.IsNotExist(err) {
 		return pkgPath
 	}
 
 	return ""
 }
 
-func getModuleList(modFilePath, indent string) {
-
+func getModuleList(modPath, indent string) {
+	fmt.Println("Looing at:" + modPath)
+	modFilePath := path.Join(constructFilePath(modPath), "go.mod")
 	fileBytes, err := ioutil.ReadFile(modFilePath)
 
 	if err != nil {
@@ -62,8 +67,8 @@ func getModuleList(modFilePath, indent string) {
 
 	found := false
 
-
 	lines := strings.Split(string(fileBytes), "\n")
+	fmt.Println(lines)
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if !found {
@@ -75,8 +80,8 @@ func getModuleList(modFilePath, indent string) {
 				return
 			} else {
 				name, _ := getNameAndVersion(line)
-				fmt.Println(indent + name + ":")
-				getModuleList(constructFilePath(line), indent + "  ")
+				fmt.Println(name + ":")
+				getModuleList(line, indent + "  ")
 			}
 		}
 	}
@@ -84,6 +89,12 @@ func getModuleList(modFilePath, indent string) {
 
 func getSemVer(version string) string {
 	re := regexp.MustCompile("(v\\d+\\.\\d+\\.\\d+)(-.*)*")
-	return re.FindStringSubmatch(version)[1]
+	match := re.FindStringSubmatch(version)
+	if len(match) == 0 {
+		return ""
+	} else if len(match) == 1 {
+		return match[0]
+	}
+	return match[1]
 }
 
