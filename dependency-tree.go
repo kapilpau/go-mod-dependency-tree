@@ -12,7 +12,7 @@ import (
 
 var gopath = ""
 
-func main()  {
+func main() {
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Println(err)
@@ -26,8 +26,8 @@ func main()  {
 		println("ERROR: go.mod is not present in this directory, please only run this tool in the root of your go project")
 	}
 
-	fmt.Println(cwd + ":")
-	getModuleList(cwd, "  ")
+	// fmt.Println(cwd + ":")
+	getModuleList(strings.Split(cwd, gopath+"/src/")[1], "")
 
 }
 
@@ -40,35 +40,40 @@ func getNameAndVersion(module string) (string, string) {
 	return s[0], getSemVer(s[1])
 }
 
-func constructFilePath(dep string) string {
+func constructFilePath(dep string) (string, bool) {
 	module, version := getNameAndVersion(dep)
-	pkgPath := path.Join(gopath, "pkg", "mod", module + "@" + getSemVer(version))
+	pkgPath := path.Join(gopath, "pkg", "mod", module+"@"+getSemVer(version))
 	srcPath := path.Join(gopath, "src", module)
 
 	if _, err := os.Stat(srcPath); err == nil || !os.IsNotExist(err) {
-		return srcPath
+		return srcPath, true
 	}
 
 	if _, err := os.Stat(pkgPath); err == nil || !os.IsNotExist(err) {
-		return pkgPath
+		return pkgPath, true
 	}
 
-	return ""
+	return "", false
 }
 
 func getModuleList(modPath, indent string) {
-	fmt.Println("Looing at:" + modPath)
-	modFilePath := path.Join(constructFilePath(modPath), "go.mod")
+	rawPath, modFound := constructFilePath(modPath)
+	if !modFound {
+		fmt.Println(indent + strings.Split(modPath, " //")[0])
+		return
+	}
+	modFilePath := path.Join(rawPath, "go.mod")
 	fileBytes, err := ioutil.ReadFile(modFilePath)
 
 	if err != nil {
+		fmt.Println(indent + strings.Split(modPath, " //")[0])
 		return
 	}
 
 	found := false
 
 	lines := strings.Split(string(fileBytes), "\n")
-	fmt.Println(lines)
+	fmt.Println(indent + strings.Split(modPath, " //")[0] + ":")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if !found {
@@ -79,9 +84,7 @@ func getModuleList(modPath, indent string) {
 			if line == ")" {
 				return
 			} else {
-				name, _ := getNameAndVersion(line)
-				fmt.Println(name + ":")
-				getModuleList(line, indent + "  ")
+				getModuleList(line, indent+"  ")
 			}
 		}
 	}
@@ -97,4 +100,3 @@ func getSemVer(version string) string {
 	}
 	return match[1]
 }
-
