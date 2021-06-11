@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+go-mod-dependency-tree
+go-tree
 
 # Test binary, built with `go test -c`
 *.test

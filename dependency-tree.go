@@ -24,15 +24,18 @@ func main() {
 	modFile := path.Join(cwd, "go.mod")
 	if _, err := os.Stat(modFile); os.IsNotExist(err) {
 		println("ERROR: go.mod is not present in this directory, please only run this tool in the root of your go project")
+		os.Exit(1)
 	}
 
-	// fmt.Println(cwd + ":")
-	getModuleList(strings.Split(cwd, gopath+"/src/")[1], "")
+	getModuleList(getModuleName(cwd), "")
 
 }
 
 func getNameAndVersion(module string) (string, string) {
-
+	if strings.Contains(module, "@") {
+		s := strings.Split(module, "@")
+		return s[0], s[1]
+	}
 	s := strings.Split(module, " ")
 	if len(s) == 1 {
 		return s[0], ""
@@ -43,6 +46,7 @@ func getNameAndVersion(module string) (string, string) {
 func constructFilePath(dep string) (string, bool) {
 	module, version := getNameAndVersion(dep)
 	pkgPath := path.Join(gopath, "pkg", "mod", module+"@"+getSemVer(version))
+	fullVersionPkgPath := path.Join(gopath, "pkg", "mod", module+"@"+version)
 	srcPath := path.Join(gopath, "src", module)
 
 	if _, err := os.Stat(srcPath); err == nil || !os.IsNotExist(err) {
@@ -51,6 +55,10 @@ func constructFilePath(dep string) (string, bool) {
 
 	if _, err := os.Stat(pkgPath); err == nil || !os.IsNotExist(err) {
 		return pkgPath, true
+	}
+
+	if _, err := os.Stat(fullVersionPkgPath); err == nil || !os.IsNotExist(err) {
+		return fullVersionPkgPath, true
 	}
 
 	return "", false
@@ -99,4 +107,34 @@ func getSemVer(version string) string {
 		return match[0]
 	}
 	return match[1]
+}
+
+func getModuleName(cwd string) string {
+
+	modFilePath := path.Join(cwd, "go.mod")
+	fileBytes, err := ioutil.ReadFile(modFilePath)
+
+	if err != nil {
+		fmt.Println("Error reading go.mod: ", err)
+		os.Exit(1)
+	}
+
+	lines := strings.Split(string(fileBytes), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "module ") {
+			modAddress := strings.Split(line, "module ")[1]
+			var modName string
+			if strings.HasSuffix(cwd, modAddress) {
+				modName = modAddress
+			} else {
+				modName = modAddress + strings.Split(cwd, modAddress)[1]
+			}
+			return modName
+		}
+	}
+
+	fmt.Println("Invalid go.mod, not module name")
+	os.Exit(1)
+	return ""
 }
