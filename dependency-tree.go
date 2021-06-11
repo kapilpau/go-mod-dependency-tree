@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,12 +12,31 @@ import (
 )
 
 var gopath = ""
+var maxDepth = flag.Int("maxDepth", -1, "Maximum recursion level to scan, -1 for no limit, otherwise must be an integer greater than 0. Defaults to -1.")
+var modulePath = flag.String("modulePath", ".", "Path to module to scan, can be relative or absolute. Defaults to current working directory.")
 
 func main() {
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+	flag.Parse()
+
+	cwd := *modulePath
+
+	if cwd == "." {
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Println(err)
+			os.Exit(1)
+		}
+		cwd = dir
+	} else {
+		if !path.IsAbs(*modulePath) {
+
+			dir, err := os.Getwd()
+			if err != nil {
+				log.Println(err)
+				os.Exit(1)
+			}
+			cwd = path.Join(dir, *modulePath)
+		}
 	}
 
 	gopath = os.Getenv("GOPATH")
@@ -26,8 +46,7 @@ func main() {
 		println("ERROR: go.mod is not present in this directory, please only run this tool in the root of your go project")
 		os.Exit(1)
 	}
-
-	getModuleList(getModuleName(cwd), "")
+	getModuleList(getModuleName(cwd), "", *maxDepth)
 
 }
 
@@ -64,7 +83,11 @@ func constructFilePath(dep string) (string, bool) {
 	return "", false
 }
 
-func getModuleList(modPath, indent string) {
+func getModuleList(modPath, indent string, depth int) {
+	if depth == 0 {
+		fmt.Println(indent + strings.Split(modPath, " //")[0])
+		return
+	}
 	rawPath, modFound := constructFilePath(escapeCapitalsInModuleName(modPath))
 	if !modFound {
 		fmt.Println(indent + strings.Split(modPath, " //")[0])
@@ -92,7 +115,7 @@ func getModuleList(modPath, indent string) {
 			if line == ")" {
 				return
 			} else {
-				getModuleList(line, indent+"  ")
+				getModuleList(line, indent+"  ", depth-1)
 			}
 		}
 	}
