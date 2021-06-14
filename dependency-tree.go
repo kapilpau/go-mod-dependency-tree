@@ -12,8 +12,14 @@ import (
 )
 
 var gopath = ""
-var maxDepth = flag.Int("maxDepth", -1, "Maximum recursion level to scan, -1 for no limit, otherwise must be an integer greater than 0. Defaults to -1.")
+var maxDepth = flag.Int("maxDepth", -1, "Maximum recursion level to scan, -1 for no limit, otherwise must be an integer greater than 0, ignored if -find specified. Defaults to -1.")
 var modulePath = flag.String("modulePath", ".", "Path to module to scan, can be relative or absolute. Defaults to current working directory.")
+var searchText = flag.String("find", "", "Search for a specific module. Useful for if you're looking for the dependency chain for a specific module. If not set, the program will print out the entire tree.")
+
+type dependencyChain struct {
+	module string
+	children []dependencyChain
+}
 
 func main() {
 	flag.Parse()
@@ -43,11 +49,65 @@ func main() {
 
 	modFile := path.Join(cwd, "go.mod")
 	if _, err := os.Stat(modFile); os.IsNotExist(err) {
-		println("ERROR: go.mod is not present in this directory, please only run this tool in the root of your go project")
+		println("ERROR: go.mod is not present in this directory, please only run this tool in the root of your go project or specify a path to the root directory of a go project")
 		os.Exit(1)
 	}
-	getModuleList(getModuleName(cwd), "", *maxDepth)
 
+	if *searchText != "" {
+		chain := search()
+		if len(chain.children) != 0 {
+			printChain(chain, "")
+		} else {
+			fmt.Println("Unable to find module '", *searchText, "' in dependency tree.")
+		}
+	} else {
+		getModuleList(getModuleName(cwd), "", *maxDepth)
+	}
+
+	os.Exit(0)
+}
+
+func printChain(chain dependencyChain, indent string) {
+	if len(chain.children) == 0 {
+		fmt.Println(indent + chain.module)
+	} else {
+		fmt.Println(indent + chain.module + ":")
+		printChain(chain, indent + "  ")
+	}
+}
+
+func search() dependencyChain {
+	fmt.Println("Searching for " + *searchText)
+	modPath := *searchText
+	rawPath, modFound := constructFilePath(escapeCapitalsInModuleName(modPath))
+	if !modFound {
+		return dependencyChain{}
+	}
+	modFilePath := path.Join(rawPath, "go.mod")
+	fileBytes, err := ioutil.ReadFile(modFilePath)
+
+	if err != nil {
+		return dependencyChain{}
+	}
+
+	found := false
+
+	lines := strings.Split(string(fileBytes), "\n")
+	fmt.Println(strings.Split(modPath, " //")[0] + ":")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !found {
+			if line == "require (" {
+				found = true
+			}
+		} else {
+			if line == ")" {
+				return dependencyChain{}
+			} else {
+				getModuleList(line, indent+"  ", depth-1)
+			}
+		}
+	}
 }
 
 func getNameAndVersion(module string) (string, string) {
