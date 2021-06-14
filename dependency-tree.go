@@ -17,7 +17,7 @@ var modulePath = flag.String("modulePath", ".", "Path to module to scan, can be 
 var searchText = flag.String("find", "", "Search for a specific module. Useful for if you're looking for the dependency chain for a specific module. If not set, the program will print out the entire tree.")
 
 type dependencyChain struct {
-	module string
+	module   string
 	children []dependencyChain
 }
 
@@ -54,11 +54,11 @@ func main() {
 	}
 
 	if *searchText != "" {
-		chain := search()
+		chain := search(cwd)
 		if len(chain.children) != 0 {
 			printChain(chain, "")
 		} else {
-			fmt.Println("Unable to find module '", *searchText, "' in dependency tree.")
+			fmt.Println("Unable to find module '" + *searchText + "' in dependency tree.")
 		}
 	} else {
 		getModuleList(getModuleName(cwd), "", *maxDepth)
@@ -72,28 +72,39 @@ func printChain(chain dependencyChain, indent string) {
 		fmt.Println(indent + chain.module)
 	} else {
 		fmt.Println(indent + chain.module + ":")
-		printChain(chain, indent + "  ")
+		for _, child := range chain.children {
+			printChain(child, indent+"  ")
+		}
 	}
 }
 
-func search() dependencyChain {
+func search(cwd string) dependencyChain {
 	fmt.Println("Searching for " + *searchText)
-	modPath := *searchText
-	rawPath, modFound := constructFilePath(escapeCapitalsInModuleName(modPath))
-	if !modFound {
-		return dependencyChain{}
+
+	return dependencyChain{
+		module:   getModuleName(cwd),
+		children: rescursiveFind(getModuleName(cwd)),
 	}
+}
+
+func rescursiveFind(module string) []dependencyChain {
+	children := make([]dependencyChain, 0)
+	rawPath, modFound := constructFilePath(escapeCapitalsInModuleName(module))
+
+	if !modFound {
+		return children
+	}
+
 	modFilePath := path.Join(rawPath, "go.mod")
 	fileBytes, err := ioutil.ReadFile(modFilePath)
 
 	if err != nil {
-		return dependencyChain{}
+		return children
 	}
 
 	found := false
 
 	lines := strings.Split(string(fileBytes), "\n")
-	fmt.Println(strings.Split(modPath, " //")[0] + ":")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if !found {
@@ -101,13 +112,27 @@ func search() dependencyChain {
 				found = true
 			}
 		} else {
-			if line == ")" {
-				return dependencyChain{}
+			if line == "" {
+				// skip
+			} else if strings.Split(line, " ")[0] == *searchText {
+				children = append(children, dependencyChain{
+					module:   line,
+					children: make([]dependencyChain, 0),
+				})
+			} else if line == ")" {
+				return children
 			} else {
-				getModuleList(line, indent+"  ", depth-1)
+				chain := rescursiveFind(line)
+				if len(chain) > 0 {
+					children = append(children, dependencyChain{
+						module:   line,
+						children: chain,
+					})
+				}
 			}
 		}
 	}
+	return children
 }
 
 func getNameAndVersion(module string) (string, string) {
@@ -172,7 +197,9 @@ func getModuleList(modPath, indent string, depth int) {
 				found = true
 			}
 		} else {
-			if line == ")" {
+			if line == "" {
+				// skip
+			} else if line == ")" {
 				return
 			} else {
 				getModuleList(line, indent+"  ", depth-1)

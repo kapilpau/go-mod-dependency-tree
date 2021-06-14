@@ -18,3 +18,4 @@ go-tree
 
 # IDE
 .idea
+.vscode

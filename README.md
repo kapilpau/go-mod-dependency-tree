@@ -19,8 +19,9 @@ golang.org/x/crypto@v0.0.0-20200221231518-2aa609cf4a9d:
 
 | Argument | Description | Default |
 | --- | --- | --- |
-| -maxDepth | Maximum recursion level to scan, -1 for no limit, otherwise must be an integer greater than 0. | -1 |
+| -maxDepth | Maximum recursion level to scan, -1 for no limit, otherwise must be an integer greater than 0, ignored if -find specified. | -1 |
 | -modulePath | Path to module to scan, can be relative or absolute. | Current working directory |
+| -find | Search for a specific module. Useful for if you're looking for the dependency chain for a specific module. If not set, the program will print out the entire tree. | Not set |
 
 ## License
 
