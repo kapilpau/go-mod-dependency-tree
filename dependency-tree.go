@@ -14,6 +14,7 @@ import (
 var gopath = ""
 var maxDepth = flag.Int("maxDepth", -1, "Maximum recursion level to scan, -1 for no limit, otherwise must be an integer greater than 0, ignored if -find specified. Defaults to -1.")
 var modulePath = flag.String("modulePath", ".", "Path to module to scan, can be relative or absolute. Defaults to current working directory.")
+var versionFlag = flag.Bool("version", false, "Print out go-tree version.")
 var searchText = flag.String("find", "", "Search for a specific module. Useful for if you're looking for the dependency chain for a specific module. If not set, the program will print out the entire tree.")
 
 type dependencyChain struct {
@@ -23,6 +24,15 @@ type dependencyChain struct {
 
 func main() {
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println("v1.2.0")
+		os.Exit(0)
+	}
+
+	if *maxDepth == 0 || *maxDepth < -1 {
+		fmt.Println("Invalid value supplied to for maxDepth, must either be -1 or an integer grater than 0")
+	}
 
 	cwd := *modulePath
 
