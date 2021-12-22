@@ -26,7 +26,7 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Println("v1.2.0")
+		fmt.Println("v1.2.1")
 		os.Exit(0)
 	}
 
@@ -244,6 +244,9 @@ func getModuleName(cwd string) string {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "module ") {
 			modAddress := strings.Split(line, "module ")[1]
+			if strings.Contains(modAddress, "\"") {
+				modAddress = modAddress[1 : len(modAddress)-1]
+			}
 			var modName string
 			if strings.HasSuffix(cwd, modAddress) {
 				modName = modAddress
