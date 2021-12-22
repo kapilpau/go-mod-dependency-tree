@@ -1,6 +1,11 @@
 # Go Mod Dependency Tree
+[![Go Report Card](https://goreportcard.com/badge/github.com/kapilpau/go-mod-dependency-tree)](https://goreportcard.com/report/github.com/kapilpau/go-mod-dependency-tree)
 
 This package will print out the dependency tree for your go project
+
+## Installation
+
+To install this tool, please download the executable for your platform and ensure that it is in your PATH and executable.
 
 ## Usage
 
