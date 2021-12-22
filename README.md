@@ -3,6 +3,10 @@
 
 This package will print out the dependency tree for your go project
 
+## Installation
+
+To install this tool, please download the executable for your platform and ensure that it is in your PATH and executable.
+
 ## Usage
 
 To use this tool, make sure the binary is in your PATH and have GOPATH set in your environment. Call the CLI from the root of your go project:
