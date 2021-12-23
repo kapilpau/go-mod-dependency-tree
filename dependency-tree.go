@@ -243,14 +243,7 @@ func getModuleName(cwd string) string {
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "module ") {
-			modAddress := strings.Split(line, "module ")[1]
-			var modName string
-//			if strings.HasSuffix(cwd, modAddress) {
-				modName = modAddress
-//			} else {
-//				modName = modAddress + strings.Split(cwd, modAddress)[1]
-//			}
-			return modName
+			return strings.Split(line, "module ")[1]
 		}
 	}
 
